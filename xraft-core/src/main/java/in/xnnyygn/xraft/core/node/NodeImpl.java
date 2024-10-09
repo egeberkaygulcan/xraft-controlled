@@ -4,6 +4,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.eventbus.DeadEvent;
 import com.google.common.eventbus.Subscribe;
 import com.google.common.util.concurrent.FutureCallback;
+
+import in.xnnyygn.xraft.core.controlled.InterceptorClient;
 import in.xnnyygn.xraft.core.log.InstallSnapshotState;
 import in.xnnyygn.xraft.core.log.entry.Entry;
 import in.xnnyygn.xraft.core.log.entry.RemoveNodeEntry;
@@ -76,6 +78,39 @@ public class NodeImpl implements Node {
      */
     NodeImpl(NodeContext context) {
         this.context = context;
+    }
+
+    public String getSelfId() { return context.selfId().toString(); }
+
+    public void scheduleMessage(RaftMessage message) {
+        // TODO
+        if (message instanceof RequestVoteRpcMessage) {
+            context.taskExecutor().submit(
+                () -> context.connector().replyRequestVote(doProcessRequestVoteRpc((RequestVoteRpcMessage) message), (RequestVoteRpcMessage) message),
+                LOGGING_FUTURE_CALLBACK
+            );
+        } else if (message instanceof RequestVoteResult) {
+            context.taskExecutor().submit(() -> doProcessRequestVoteResult((RequestVoteResult) message), LOGGING_FUTURE_CALLBACK);
+        } else if (message instanceof AppendEntriesRpcMessage) {
+            context.taskExecutor().submit(() ->
+                        context.connector().replyAppendEntries(doProcessAppendEntriesRpc((AppendEntriesRpcMessage) message), (AppendEntriesRpcMessage) message),
+                LOGGING_FUTURE_CALLBACK
+            );
+        } else if (message instanceof AppendEntriesResultMessage) {
+            context.taskExecutor().submit(() -> doProcessAppendEntriesResult((AppendEntriesResultMessage) message), LOGGING_FUTURE_CALLBACK);
+        } else if (message instanceof InstallSnapshotRpcMessage) {
+            context.taskExecutor().submit(
+                () -> context.connector().replyInstallSnapshot(doProcessInstallSnapshotRpc((InstallSnapshotRpcMessage) message), (InstallSnapshotRpcMessage) message),
+                LOGGING_FUTURE_CALLBACK
+            );
+        } else if(message instanceof InstallSnapshotResultMessage) {
+            context.taskExecutor().submit(
+                () -> doProcessInstallSnapshotResult((InstallSnapshotResultMessage) message),
+                LOGGING_FUTURE_CALLBACK
+            );
+        } else {
+            logger.info("Received unknown message.");
+        }
     }
 
     /**
@@ -284,6 +319,8 @@ public class NodeImpl implements Node {
     }
 
     private void doProcessElectionTimeout() {
+        // Timeout event
+        InterceptorClient.getInstance().sendEvent(String.format("{\"type\":\"Timeout\",\"node\":\"%s\"}", getSelfId()));
         if (role.getName() == RoleName.LEADER) {
             logger.warn("node {}, current role is leader, ignore election timeout", context.selfId());
             return;
@@ -302,6 +339,8 @@ public class NodeImpl implements Node {
                 // become leader
                 logger.info("become leader, term {}", newTerm);
                 resetReplicatingStates();
+                // BecomeLeader event
+                InterceptorClient.getInstance().sendEvent(String.format("{\"type\":\"BecomeLeader\",\"node\":\"%s\",\"term\":\"%d\"}", getSelfId(), newTerm));
                 changeToRole(new LeaderNodeRole(newTerm, scheduleLogReplicationTask()));
                 context.log().appendEntry(newTerm); // no-op log
             }
@@ -463,10 +502,7 @@ public class NodeImpl implements Node {
      */
     @Subscribe
     public void onReceiveRequestVoteRpc(RequestVoteRpcMessage rpcMessage) {
-        context.taskExecutor().submit(
-                () -> context.connector().replyRequestVote(doProcessRequestVoteRpc(rpcMessage), rpcMessage),
-                LOGGING_FUTURE_CALLBACK
-        );
+        InterceptorClient.getInstance().sendMessage(rpcMessage);
     }
 
     private RequestVoteResult doProcessRequestVoteRpc(RequestVoteRpcMessage rpcMessage) {
@@ -474,21 +510,21 @@ public class NodeImpl implements Node {
         // skip non-major node, it maybe removed node
         if (!context.group().isMemberOfMajor(rpcMessage.getSourceNodeId())) {
             logger.warn("receive request vote rpc from node {} which is not major node, ignore", rpcMessage.getSourceNodeId());
-            return new RequestVoteResult(role.getTerm(), false);
+            return new RequestVoteResult(role.getTerm(), false, getSelfId());
         }
 
         // reply current term if result's term is smaller than current one
         RequestVoteRpc rpc = rpcMessage.get();
         if (rpc.getTerm() < role.getTerm()) {
             logger.debug("term from rpc < current term, don't vote ({} < {})", rpc.getTerm(), role.getTerm());
-            return new RequestVoteResult(role.getTerm(), false);
+            return new RequestVoteResult(role.getTerm(), false, getSelfId());
         }
 
         // step down if result's term is larger than current term
         if (rpc.getTerm() > role.getTerm()) {
             boolean voteForCandidate = !context.log().isNewerThan(rpc.getLastLogIndex(), rpc.getLastLogTerm());
             becomeFollower(rpc.getTerm(), (voteForCandidate ? rpc.getCandidateId() : null), null, true);
-            return new RequestVoteResult(rpc.getTerm(), voteForCandidate);
+            return new RequestVoteResult(rpc.getTerm(), voteForCandidate, getSelfId());
         }
 
         assert rpc.getTerm() == role.getTerm();
@@ -502,12 +538,12 @@ public class NodeImpl implements Node {
                 if ((votedFor == null && !context.log().isNewerThan(rpc.getLastLogIndex(), rpc.getLastLogTerm())) ||
                         Objects.equals(votedFor, rpc.getCandidateId())) {
                     becomeFollower(role.getTerm(), rpc.getCandidateId(), null, true);
-                    return new RequestVoteResult(rpc.getTerm(), true);
+                    return new RequestVoteResult(rpc.getTerm(), true, getSelfId());
                 }
-                return new RequestVoteResult(role.getTerm(), false);
+                return new RequestVoteResult(role.getTerm(), false, getSelfId());
             case CANDIDATE: // voted for self
             case LEADER:
-                return new RequestVoteResult(role.getTerm(), false);
+                return new RequestVoteResult(role.getTerm(), false, getSelfId());
             default:
                 throw new IllegalStateException("unexpected node role [" + role.getName() + "]");
         }
@@ -523,7 +559,7 @@ public class NodeImpl implements Node {
      */
     @Subscribe
     public void onReceiveRequestVoteResult(RequestVoteResult result) {
-        context.taskExecutor().submit(() -> doProcessRequestVoteResult(result), LOGGING_FUTURE_CALLBACK);
+        InterceptorClient.getInstance().sendMessage(result);;
     }
 
     Future<?> processRequestVoteResult(RequestVoteResult result) {
@@ -558,6 +594,9 @@ public class NodeImpl implements Node {
             // become leader
             logger.info("become leader, term {}", role.getTerm());
             resetReplicatingStates();
+            // BecomeLeader event
+            InterceptorClient.getInstance().sendEvent(String.format("{\"node\":\"%s\",\"term\":\"%d\"}", getSelfId(), role.getTerm()));
+
             changeToRole(new LeaderNodeRole(role.getTerm(), scheduleLogReplicationTask()));
             context.log().appendEntry(role.getTerm()); // no-op log
             context.connector().resetChannels(); // close all inbound channels
@@ -578,10 +617,7 @@ public class NodeImpl implements Node {
      */
     @Subscribe
     public void onReceiveAppendEntriesRpc(AppendEntriesRpcMessage rpcMessage) {
-        context.taskExecutor().submit(() ->
-                        context.connector().replyAppendEntries(doProcessAppendEntriesRpc(rpcMessage), rpcMessage),
-                LOGGING_FUTURE_CALLBACK
-        );
+        InterceptorClient.getInstance().sendMessage(rpcMessage);
     }
 
     private AppendEntriesResult doProcessAppendEntriesRpc(AppendEntriesRpcMessage rpcMessage) {
@@ -639,7 +675,7 @@ public class NodeImpl implements Node {
      */
     @Subscribe
     public void onReceiveAppendEntriesResult(AppendEntriesResultMessage resultMessage) {
-        context.taskExecutor().submit(() -> doProcessAppendEntriesResult(resultMessage), LOGGING_FUTURE_CALLBACK);
+        InterceptorClient.getInstance().sendMessage(resultMessage);
     }
 
     Future<?> processAppendEntriesResult(AppendEntriesResultMessage resultMessage) {

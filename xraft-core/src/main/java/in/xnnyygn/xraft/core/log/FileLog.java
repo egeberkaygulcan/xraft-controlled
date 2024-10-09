@@ -1,6 +1,8 @@
 package in.xnnyygn.xraft.core.log;
 
 import com.google.common.eventbus.EventBus;
+
+import in.xnnyygn.xraft.core.controlled.InterceptorClient;
 import in.xnnyygn.xraft.core.log.entry.Entry;
 import in.xnnyygn.xraft.core.log.entry.EntryMeta;
 import in.xnnyygn.xraft.core.log.sequence.EntrySequence;
@@ -22,12 +24,14 @@ public class FileLog extends AbstractLog {
 
     public FileLog(File baseDir, EventBus eventBus) {
         super(eventBus);
+        System.out.println("Creating new file log.");
         rootDir = new RootDir(baseDir);
 
         LogGeneration latestGeneration = rootDir.getLatestGeneration();
         snapshot = new EmptySnapshot();
         // TODO add log
         if (latestGeneration != null) {
+            System.out.println("Not new instance, loading snapshot.");
             if (latestGeneration.getSnapshotFile().exists()) {
                 snapshot = new FileSnapshot(latestGeneration);
             }
@@ -51,6 +55,8 @@ public class FileLog extends AbstractLog {
         } catch (IOException e) {
             throw new LogException("failed to generate snapshot", e);
         }
+        // UpdateSnapshotIndex event
+        InterceptorClient.getInstance().sendEvent(String.format("{\"type\":\"UpdateSnapshot\",\"node\":\"%s\",\"snapshot_index\":\"%d\"}", InterceptorClient.getInstance().getNodeId(), lastAppliedEntryMeta.getIndex()));
         return new FileSnapshot(logDir);
     }
 

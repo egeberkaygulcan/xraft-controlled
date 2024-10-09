@@ -33,6 +33,7 @@ class Encoder extends MessageToByteEncoder<Object> {
             Protos.RequestVoteResult protoResult = Protos.RequestVoteResult.newBuilder()
                     .setTerm(result.getTerm())
                     .setVoteGranted(result.isVoteGranted())
+                    .setSourceId(result.getSourceId())
                     .build();
             this.writeMessage(out, MessageConstants.MSG_TYPE_REQUEST_VOTE_RESULT, protoResult);
         } else if (msg instanceof AppendEntriesRpc) {

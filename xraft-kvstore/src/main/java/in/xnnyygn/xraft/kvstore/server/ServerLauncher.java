@@ -1,9 +1,12 @@
 package in.xnnyygn.xraft.kvstore.server;
 
+import in.xnnyygn.xraft.core.controlled.InterceptorClient;
 import in.xnnyygn.xraft.core.node.Node;
 import in.xnnyygn.xraft.core.node.NodeBuilder;
 import in.xnnyygn.xraft.core.node.NodeEndpoint;
 import in.xnnyygn.xraft.core.node.NodeId;
+import in.xnnyygn.xraft.core.node.NodeImpl;
+
 import org.apache.commons.cli.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +71,16 @@ public class ServerLauncher {
                 .argName("node-endpoint")
                 .desc("group config, required when starts with group-member mode. format: <node-endpoint> <node-endpoint>..., " +
                         "format of node-endpoint: <node-id>,<host>,<port-raft-node>, eg: A,localhost,8000 B,localhost,8010")
+                .build());
+        options.addOption(Option.builder("ip")
+                .hasArgs()
+                .argName("interceptor-port")
+                .desc("port number for the message interceptor")
+                .build());
+        options.addOption(Option.builder("sp")
+                .hasArgs()
+                .argName("scheduler-port")
+                .desc("port number for the remote scheduler")
                 .build());
 
         if (args.length == 0) {
@@ -135,8 +148,17 @@ public class ServerLauncher {
         Node node = new NodeBuilder(nodeEndpoints, new NodeId(rawNodeId))
                 .setDataDir(cmdLine.getOptionValue('d'))
                 .build();
+
+        // Initialize InterceptorClient here
+        InterceptorClient.getInstance().init(Integer.parseInt((String)cmdLine.getParsedOptionValue("ip")), 
+                Integer.parseInt((String)cmdLine.getParsedOptionValue("sp")), 
+                (NodeImpl) node);
+
         Server server = new Server(node, portService);
         logger.info("start as group member, group config {}, id {}, port service {}", nodeEndpoints, rawNodeId, portService);
+        
+        InterceptorClient.getInstance().registerServer();
+
         startServer(server);
     }
 

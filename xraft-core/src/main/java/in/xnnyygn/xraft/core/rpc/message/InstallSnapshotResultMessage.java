@@ -5,7 +5,7 @@ import in.xnnyygn.xraft.core.node.NodeId;
 
 import javax.annotation.Nonnull;
 
-public class InstallSnapshotResultMessage {
+public class InstallSnapshotResultMessage implements RaftMessage {
 
     private final InstallSnapshotResult result;
     private final NodeId sourceNodeId;
@@ -30,4 +30,5 @@ public class InstallSnapshotResultMessage {
         return rpc;
     }
 
+    public String toString() { return "InstallSnapshotResultMessage"; }
 }

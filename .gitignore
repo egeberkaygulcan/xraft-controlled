@@ -31,3 +31,5 @@ hs_err_pid*
 /xraft-core/xraft-core.iml
 xraft-parent.iml
 /xraft-parent.iml
+data/
+.vscode/

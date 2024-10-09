@@ -1516,6 +1516,11 @@ public final class Protos {
      * <code>bool vote_granted = 2;</code>
      */
     boolean getVoteGranted();
+
+    /**
+     * <code>string source_id = 3;</code>
+     */
+    java.lang.String getSourceId();
   }
   /**
    * Protobuf type {@code RequestVoteResult}
@@ -1532,6 +1537,7 @@ public final class Protos {
     private RequestVoteResult() {
       term_ = 0;
       voteGranted_ = false;
+      sourceId_ = "";
     }
 
     @java.lang.Override
@@ -1566,6 +1572,11 @@ public final class Protos {
             case 16: {
 
               voteGranted_ = input.readBool();
+              break;
+            }
+            case 26: {
+
+              sourceId_ = input.readStringRequireUtf8();
               break;
             }
             default: {
@@ -1618,6 +1629,41 @@ public final class Protos {
       return voteGranted_;
     }
 
+    public static final int SOURCE_ID_FIELD_NUMBER = 3;
+    private volatile java.lang.Object sourceId_;
+
+    /**
+     * <code>string source_id = 3;</code>
+     */
+    public java.lang.String getSourceId() {
+      java.lang.Object ref = sourceId_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        sourceId_ = s;
+        return s;
+      }
+    }
+    /**
+     * <code>string source_id = 3;</code>
+     */
+    public com.google.protobuf.ByteString
+        getSourceIdBytes() {
+      java.lang.Object ref = sourceId_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        sourceId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
     private byte memoizedIsInitialized = -1;
     @java.lang.Override
     public final boolean isInitialized() {
@@ -1638,6 +1684,9 @@ public final class Protos {
       if (voteGranted_ != false) {
         output.writeBool(2, voteGranted_);
       }
+      if(!getSourceIdBytes().isEmpty()) {
+        com.google.protobuf.GeneratedMessageV3.writeString(output, 3, sourceId_);
+      }
       unknownFields.writeTo(output);
     }
 
@@ -1654,6 +1703,9 @@ public final class Protos {
       if (voteGranted_ != false) {
         size += com.google.protobuf.CodedOutputStream
           .computeBoolSize(2, voteGranted_);
+      }
+      if (!getSourceIdBytes().isEmpty()) {
+        size += com.google.protobuf.GeneratedMessageV3.computeStringSize(3, sourceId_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -1675,6 +1727,8 @@ public final class Protos {
           == other.getTerm());
       result = result && (getVoteGranted()
           == other.getVoteGranted());
+      result = result && getSourceId()
+          .equals(other.getSourceId());
       result = result && unknownFields.equals(other.unknownFields);
       return result;
     }
@@ -1691,6 +1745,8 @@ public final class Protos {
       hash = (37 * hash) + VOTE_GRANTED_FIELD_NUMBER;
       hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
           getVoteGranted());
+      hash = (37 * hash) + SOURCE_ID_FIELD_NUMBER;
+      hash = (53 * hash) + getSourceId().hashCode();
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
       return hash;
@@ -1828,6 +1884,8 @@ public final class Protos {
 
         voteGranted_ = false;
 
+        sourceId_ = "";
+
         return this;
       }
 
@@ -1856,6 +1914,7 @@ public final class Protos {
         in.xnnyygn.xraft.core.Protos.RequestVoteResult result = new in.xnnyygn.xraft.core.Protos.RequestVoteResult(this);
         result.term_ = term_;
         result.voteGranted_ = voteGranted_;
+        result.sourceId_ = sourceId_;
         onBuilt();
         return result;
       }
@@ -1909,6 +1968,10 @@ public final class Protos {
         }
         if (other.getVoteGranted() != false) {
           setVoteGranted(other.getVoteGranted());
+        }
+        if(!other.getSourceId().isEmpty()) {
+          sourceId_ = other.sourceId_;
+          onChanged();
         }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
@@ -1987,6 +2050,74 @@ public final class Protos {
       public Builder clearVoteGranted() {
         
         voteGranted_ = false;
+        onChanged();
+        return this;
+      }
+
+      private java.lang.Object sourceId_ ;
+      /**
+       * <code>string source_id = 3;</code>
+       */
+      public String getSourceId() {
+        java.lang.Object ref = sourceId_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          sourceId_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>string source_id = 3;</code>
+       */
+      public com.google.protobuf.ByteString
+      getSourceIdBytes() {
+        java.lang.Object ref = sourceId_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          sourceId_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>string source_id = 3;</code>
+       */
+      public Builder setSourceId(java.lang.String value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        
+              sourceId_ = value;
+              onChanged();
+              return this;
+      }
+      /**
+       * <code>string source_id = 3;</code>
+       */
+      public Builder clearSourceId() {
+        
+        sourceId_ = getDefaultInstance().getSourceId();
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string source_id = 3;</code>
+       */
+      public Builder setSourceIdBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  checkByteStringIsUtf8(value);
+        
+        sourceId_ = value;
         onChanged();
         return this;
       }
@@ -12142,7 +12273,7 @@ public final class Protos {
     internal_static_RequestVoteResult_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_RequestVoteResult_descriptor,
-        new java.lang.String[] { "Term", "VoteGranted", });
+        new java.lang.String[] { "Term", "VoteGranted", "SourceId", });
     internal_static_AppendEntriesRpc_descriptor =
       getDescriptor().getMessageTypes().get(3);
     internal_static_AppendEntriesRpc_fieldAccessorTable = new

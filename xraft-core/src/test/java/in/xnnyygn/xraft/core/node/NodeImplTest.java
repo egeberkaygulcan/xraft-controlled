@@ -252,7 +252,7 @@ public class NodeImplTest {
         ).build();
         node.start();
         node.electionTimeout(); // request vote rpc
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true));
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, ""));
         node.replicateLog(); // append entries * 2
 
         MockConnector mockConnector = (MockConnector) node.getContext().connector();
@@ -281,7 +281,7 @@ public class NodeImplTest {
         ).build();
         node.start();
         node.electionTimeout();
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true));
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, ""));
         node.getContext().group().findMember(NodeId.of("B")).replicateNow();
         node.replicateLog();
 
@@ -300,7 +300,7 @@ public class NodeImplTest {
         ).build();
         node.start();
         node.electionTimeout();
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true));
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, ""));
         long replicatedAt = System.currentTimeMillis() - node.getContext().config().getLogReplicationReadTimeout() - 1;
         node.getContext().group().findMember(NodeId.of("B")).replicateAt(replicatedAt);
         node.replicateLog();
@@ -346,7 +346,7 @@ public class NodeImplTest {
         ).build();
         node.start();
         node.electionTimeout(); // become candidate
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true)); // become leader
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, "")); // become leader
         node.appendLog("test".getBytes());
         MockConnector mockConnector = (MockConnector) node.getContext().connector();
         // request vote rpc + append entries * 2
@@ -388,7 +388,7 @@ public class NodeImplTest {
         ).build();
         node.start();
         node.electionTimeout();
-        node.processRequestVoteResult(new RequestVoteResult(1, true)).get();
+        node.processRequestVoteResult(new RequestVoteResult(1, true, "")).get();
         node.addNode(new NodeEndpoint("A", "localhost", 2333));
     }
 
@@ -406,7 +406,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout();
-        node.processRequestVoteResult(new RequestVoteResult(1, true)).get();
+        node.processRequestVoteResult(new RequestVoteResult(1, true, "")).get();
 
         Future<GroupConfigChangeTaskReference> future = cachedThreadTaskExecutor.submit(() -> node.addNode(new NodeEndpoint("D", "localhost", 2336)));
         connector.awaitAppendEntriesRpc();
@@ -432,7 +432,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout();
-        node.processRequestVoteResult(new RequestVoteResult(1, true)).get();
+        node.processRequestVoteResult(new RequestVoteResult(1, true, "")).get();
 
         Future<GroupConfigChangeTaskReference> future = cachedThreadTaskExecutor.submit(() -> node.addNode(new NodeEndpoint("D", "localhost", 2336)));
         connector.awaitAppendEntriesRpc();
@@ -476,7 +476,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout();
-        node.processRequestVoteResult(new RequestVoteResult(1, true)).get();
+        node.processRequestVoteResult(new RequestVoteResult(1, true, "")).get();
 
         Future<GroupConfigChangeTaskReference> future = cachedThreadTaskExecutor.submit(() -> node.addNode(new NodeEndpoint("D", "localhost", 2336)));
         connector.awaitAppendEntriesRpc();
@@ -506,7 +506,7 @@ public class NodeImplTest {
         node.start();
         node.electionTimeout();
         connector.reset();
-        node.processRequestVoteResult(new RequestVoteResult(1, true)).get();
+        node.processRequestVoteResult(new RequestVoteResult(1, true, "")).get();
         cachedThreadTaskExecutor.submit(() -> node.addNode(new NodeEndpoint("D", "localhost", 2337)));
         connector.awaitAppendEntriesRpc();
         node.processAppendEntriesResult(new AppendEntriesResultMessage(
@@ -563,7 +563,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout();
-        node.processRequestVoteResult(new RequestVoteResult(1, true)).get(); // become leader, add no-op log
+        node.processRequestVoteResult(new RequestVoteResult(1, true, "")).get(); // become leader, add no-op log
         GroupConfigChangeTaskReference reference = node.removeNode(NodeId.of("B"));
         connector.awaitAppendEntriesRpc();
         node.onReceiveAppendEntriesResult(new AppendEntriesResultMessage(
@@ -591,7 +591,7 @@ public class NodeImplTest {
         node.start();
         node.electionTimeout();
         connector.reset();
-        node.processRequestVoteResult(new RequestVoteResult(1, true)).get();
+        node.processRequestVoteResult(new RequestVoteResult(1, true, "")).get();
         GroupConfigChangeTaskReference reference = node.removeNode(NodeId.of("A"));
         connector.awaitAppendEntriesRpc();
         node.onReceiveAppendEntriesResult(new AppendEntriesResultMessage(
@@ -624,7 +624,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout();
-        node.processRequestVoteResult(new RequestVoteResult(1, true)).get();
+        node.processRequestVoteResult(new RequestVoteResult(1, true, "")).get();
         node.removeNode(NodeId.of("B"));
         connector.awaitAppendEntriesRpc();
         node.processAppendEntriesResult(new AppendEntriesResultMessage(
@@ -648,7 +648,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout();
-        node.processRequestVoteResult(new RequestVoteResult(1, true)).get();
+        node.processRequestVoteResult(new RequestVoteResult(1, true, "")).get();
         node.removeNode(NodeId.of("B"));
         GroupConfigChangeTaskReference reference = node.removeNode(NodeId.of("B"));
         Assert.assertEquals(GroupConfigChangeTaskResult.TIMEOUT, reference.getResult(1000L));
@@ -863,7 +863,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout();
-        node.onReceiveRequestVoteResult(new RequestVoteResult(2, true));
+        node.onReceiveRequestVoteResult(new RequestVoteResult(2, true, ""));
         RequestVoteRpc rpc = new RequestVoteRpc();
         rpc.setTerm(2);
         rpc.setCandidateId(NodeId.of("C"));
@@ -887,7 +887,7 @@ public class NodeImplTest {
         node.start();
         node.electionTimeout();
 
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true));
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, ""));
 
         // role state
         RoleState state = node.getRoleState();
@@ -916,7 +916,7 @@ public class NodeImplTest {
         node.start();
         node.electionTimeout();
 
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, false)); // do nothing
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, false, "")); // do nothing
     }
 
     @Test
@@ -930,7 +930,7 @@ public class NodeImplTest {
         node.start();
         node.electionTimeout(); // become candidate
 
-        node.onReceiveRequestVoteResult(new RequestVoteResult(2, false));
+        node.onReceiveRequestVoteResult(new RequestVoteResult(2, false, ""));
         RoleState state = node.getRoleState();
         Assert.assertEquals(RoleName.FOLLOWER, state.getRoleName());
         Assert.assertEquals(2, state.getTerm());
@@ -943,7 +943,7 @@ public class NodeImplTest {
         node.start();
         node.electionTimeout(); // become leader
 
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true)); // do nothing
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, "")); // do nothing
     }
 
     @Test
@@ -953,7 +953,7 @@ public class NodeImplTest {
                 .build();
         node.start();
 
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true));
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, ""));
     }
 
     @Test
@@ -970,7 +970,7 @@ public class NodeImplTest {
         node.start();
         node.electionTimeout();
 
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true));
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, ""));
         RoleState state = node.getRoleState();
         Assert.assertEquals(RoleName.CANDIDATE, state.getRoleName());
         Assert.assertEquals(2, state.getVotesCount());
@@ -1081,7 +1081,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout();
-        node.onReceiveRequestVoteResult(new RequestVoteResult(2, true));
+        node.onReceiveRequestVoteResult(new RequestVoteResult(2, true, ""));
         AppendEntriesRpc rpc = new AppendEntriesRpc();
         rpc.setTerm(2);
         rpc.setLeaderId(NodeId.of("B"));
@@ -1106,7 +1106,7 @@ public class NodeImplTest {
         ).build();
         node.start();
         node.electionTimeout(); // become candidate
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true)); // become leader
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, "")); // become leader
         GroupMember member = node.getContext().group().findMember(NodeId.of("B"));
         member.replicateNow();
         node.onReceiveAppendEntriesResult(new AppendEntriesResultMessage(
@@ -1126,7 +1126,7 @@ public class NodeImplTest {
         ).build();
         node.start();
         node.electionTimeout(); // become candidate
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true)); // become leader
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, "")); // become leader
         GroupMember member = node.getContext().group().findMember(NodeId.of("B"));
         member.replicateNow();
         node.onReceiveAppendEntriesResult(new AppendEntriesResultMessage(
@@ -1170,7 +1170,7 @@ public class NodeImplTest {
         node.getContext().log().appendEntry(1);
         node.start();
         node.electionTimeout(); // become candidate
-        node.onReceiveRequestVoteResult(new RequestVoteResult(2, true)); // become leader
+        node.onReceiveRequestVoteResult(new RequestVoteResult(2, true, "")); // become leader
         GroupMember member = node.getContext().group().findMember(NodeId.of("B"));
         member.replicateNow();
         Assert.assertEquals(2, member.getNextIndex());
@@ -1192,7 +1192,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout(); // become candidate
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true)); // become leader
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, "")); // become leader
         GroupMember member = node.getContext().group().findMember(NodeId.of("B"));
         member.replicateNow();
         node.onReceiveAppendEntriesResult(new AppendEntriesResultMessage(
@@ -1212,7 +1212,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout(); // become candidate
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true)); // become leader
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, "")); // become leader
         node.onReceiveAppendEntriesResult(new AppendEntriesResultMessage(
                 new AppendEntriesResult("", 3, false),
                 NodeId.of("B"), createAppendEntriesRpc(1)));
@@ -1231,7 +1231,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout(); // become candidate
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true)); // become leader
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, "")); // become leader
         node.onReceiveAppendEntriesResult(new AppendEntriesResultMessage(
                 new AppendEntriesResult("", 1, false),
                 NodeId.of("D"), createAppendEntriesRpc(1)));
@@ -1247,7 +1247,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout(); // become candidate
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true)); // become leader
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, "")); // become leader
         GroupMember member = node.getContext().group().addNode(new NodeEndpoint("D", "localhost", 2336), 2, 0, false);
         member.replicateNow();
         member.setRemoving();
@@ -1364,7 +1364,7 @@ public class NodeImplTest {
         node.start();
         node.electionTimeout();
         mockConnector.clearMessage();
-        node.onReceiveRequestVoteResult(new RequestVoteResult(2, true));
+        node.onReceiveRequestVoteResult(new RequestVoteResult(2, true, ""));
         InstallSnapshotRpc installSnapshotRpc = new InstallSnapshotRpc();
         installSnapshotRpc.setDone(true);
         node.onReceiveInstallSnapshotResult(new InstallSnapshotResultMessage(
@@ -1404,7 +1404,7 @@ public class NodeImplTest {
         node.start();
         node.electionTimeout();
         mockConnector.clearMessage();
-        node.onReceiveRequestVoteResult(new RequestVoteResult(2, true));
+        node.onReceiveRequestVoteResult(new RequestVoteResult(2, true, ""));
         InstallSnapshotRpc installSnapshotRpc = new InstallSnapshotRpc();
         installSnapshotRpc.setDone(false);
         installSnapshotRpc.setData(new byte[0]);
@@ -1474,7 +1474,7 @@ public class NodeImplTest {
                 .build();
         node.start();
         node.electionTimeout(); // become candidate
-        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true)); // become leader
+        node.onReceiveRequestVoteResult(new RequestVoteResult(1, true, "")); // become leader
         AddNodeEntry groupConfigEntry = new AddNodeEntry(2, 1,
                 node.getContext().group().listEndpointOfMajor(),
                 new NodeEndpoint("D", "localhost", 2336));
