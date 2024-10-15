@@ -1,6 +1,8 @@
 package in.xnnyygn.xraft.core.log;
 
 import com.google.common.eventbus.EventBus;
+
+import in.xnnyygn.xraft.core.controlled.InterceptorClient;
 import in.xnnyygn.xraft.core.log.entry.Entry;
 import in.xnnyygn.xraft.core.log.entry.EntryMeta;
 import in.xnnyygn.xraft.core.log.sequence.EntrySequence;
@@ -10,6 +12,9 @@ import in.xnnyygn.xraft.core.node.NodeEndpoint;
 import in.xnnyygn.xraft.core.rpc.message.InstallSnapshotRpc;
 
 import javax.annotation.concurrent.NotThreadSafe;
+
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -22,12 +27,14 @@ public class FileLog extends AbstractLog {
 
     public FileLog(File baseDir, EventBus eventBus) {
         super(eventBus);
+        System.out.println("Creating new file log.");
         rootDir = new RootDir(baseDir);
 
         LogGeneration latestGeneration = rootDir.getLatestGeneration();
         snapshot = new EmptySnapshot();
         // TODO add log
         if (latestGeneration != null) {
+            System.out.println("Not new instance, loading snapshot.");
             if (latestGeneration.getSnapshotFile().exists()) {
                 snapshot = new FileSnapshot(latestGeneration);
             }
@@ -51,6 +58,12 @@ public class FileLog extends AbstractLog {
         } catch (IOException e) {
             throw new LogException("failed to generate snapshot", e);
         }
+        // UpdateSnapshotIndex event
+        JSONObject json = new JSONObject();
+        json.put("type", "UpdateSnapshot");
+        json.put("node", InterceptorClient.getInstance().getNodeId());
+        json.put("snapshot_index", lastAppliedEntryMeta.getIndex());
+        InterceptorClient.getInstance().sendEvent(json.toString());
         return new FileSnapshot(logDir);
     }
 

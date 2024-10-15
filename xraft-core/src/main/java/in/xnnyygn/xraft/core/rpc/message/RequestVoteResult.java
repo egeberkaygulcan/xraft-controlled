@@ -2,14 +2,18 @@ package in.xnnyygn.xraft.core.rpc.message;
 
 import java.io.Serializable;
 
-public class RequestVoteResult implements Serializable {
+import in.xnnyygn.xraft.core.node.NodeId;
+
+public class RequestVoteResult implements Serializable, RaftMessage {
 
     private int term;
     private boolean voteGranted;
+    private String sourceId;
 
-    public RequestVoteResult(int term, boolean voteGranted) {
+    public RequestVoteResult(int term, boolean voteGranted, String sourceId) {
         this.term = term;
         this.voteGranted = voteGranted;
+        this.sourceId = sourceId;
     }
 
     public int getTerm() {
@@ -26,6 +30,18 @@ public class RequestVoteResult implements Serializable {
 
     public void setVoteGranted(boolean voteGranted) {
         this.voteGranted = voteGranted;
+    }
+
+    public String getSourceId() {
+        return sourceId;
+    }
+
+    public void setSourceId(String sourceId) {
+        this.sourceId = sourceId;
+    }
+
+    public NodeId getSourceNodeId() {
+        return new NodeId(sourceId);
     }
 
     @Override

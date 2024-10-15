@@ -5,7 +5,7 @@ import in.xnnyygn.xraft.core.node.NodeId;
 
 import javax.annotation.Nonnull;
 
-public class AppendEntriesResultMessage {
+public class AppendEntriesResultMessage implements RaftMessage {
 
     private final AppendEntriesResult result;
     private final NodeId sourceNodeId;
@@ -31,4 +31,7 @@ public class AppendEntriesResultMessage {
         return rpc;
     }
 
+    public String getSource() { return this.getSourceNodeId().toString(); }
+
+    public String toString() { return "AppendEntriesResultMessage"; }
 }

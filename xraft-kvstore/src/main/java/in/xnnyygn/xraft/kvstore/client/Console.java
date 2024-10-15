@@ -17,8 +17,9 @@ public class Console {
     private final Map<String, Command> commandMap;
     private final CommandContext commandContext;
     private final LineReader reader;
+    private String initialCommand;
 
-    public Console(Map<NodeId, Address> serverMap) {
+    public Console(Map<NodeId, Address> serverMap, String initialCommand) {
         commandMap = buildCommandMap(Arrays.asList(
                 new ExitCommand(),
                 new ClientAddServerCommand(),
@@ -32,6 +33,7 @@ public class Console {
                 new KVStoreSetCommand()
         ));
         commandContext = new CommandContext(serverMap);
+        this.initialCommand = initialCommand;
 
         ArgumentCompleter completer = new ArgumentCompleter(
                 new StringsCompleter(commandMap.keySet()),
@@ -56,7 +58,12 @@ public class Console {
         String line;
         while (commandContext.isRunning()) {
             try {
-                line = reader.readLine(PROMPT);
+                if (!this.initialCommand.isEmpty()) {
+                    line = this.initialCommand;
+                    this.initialCommand = "";
+                } else {
+                    line = reader.readLine(PROMPT);
+                }
                 if (line.trim().isEmpty())
                     continue;
                 dispatchCommand(line);

@@ -46,7 +46,7 @@ public class Decoder extends ByteToMessageDecoder {
                 break;
             case MessageConstants.MSG_TYPE_REQUEST_VOTE_RESULT:
                 Protos.RequestVoteResult protoRVResult = Protos.RequestVoteResult.parseFrom(payload);
-                out.add(new RequestVoteResult(protoRVResult.getTerm(), protoRVResult.getVoteGranted()));
+                out.add(new RequestVoteResult(protoRVResult.getTerm(), protoRVResult.getVoteGranted(), protoRVResult.getSourceId()));
                 break;
             case MessageConstants.MSG_TYPE_APPEND_ENTRIES_RPC:
                 Protos.AppendEntriesRpc protoAERpc = Protos.AppendEntriesRpc.parseFrom(payload);
