@@ -76,7 +76,7 @@ public class InterceptorClient {
             this.app.post("/schedule_" + key, ctx -> {
                 try {
                     // System.out.println("Scheduling message from " + key);
-                    RaftMessage message = this.messageQueues.get(key).getFirst();
+                    RaftMessage message = this.messageQueues.get(key).get(0);
                     this.node.scheduleMessage(message);
                 } catch (NoSuchElementException e) {
                     System.out.println("Message queue empty.");
