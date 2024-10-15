@@ -2,6 +2,8 @@ package in.xnnyygn.xraft.core.rpc.message;
 
 import java.io.Serializable;
 
+import in.xnnyygn.xraft.core.node.NodeId;
+
 public class RequestVoteResult implements Serializable, RaftMessage {
 
     private int term;
@@ -36,6 +38,10 @@ public class RequestVoteResult implements Serializable, RaftMessage {
 
     public void setSourceId(String sourceId) {
         this.sourceId = sourceId;
+    }
+
+    public NodeId getSourceNodeId() {
+        return new NodeId(sourceId);
     }
 
     @Override

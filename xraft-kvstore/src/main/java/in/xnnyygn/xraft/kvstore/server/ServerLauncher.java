@@ -148,18 +148,20 @@ public class ServerLauncher {
         Node node = new NodeBuilder(nodeEndpoints, new NodeId(rawNodeId))
                 .setDataDir(cmdLine.getOptionValue('d'))
                 .build();
-
+        
         // Initialize InterceptorClient here
         InterceptorClient.getInstance().init(Integer.parseInt((String)cmdLine.getParsedOptionValue("ip")), 
                 Integer.parseInt((String)cmdLine.getParsedOptionValue("sp")), 
-                (NodeImpl) node);
+                (NodeImpl) node,
+                nodeEndpoints);
+        
 
         Server server = new Server(node, portService);
         logger.info("start as group member, group config {}, id {}, port service {}", nodeEndpoints, rawNodeId, portService);
-        
-        InterceptorClient.getInstance().registerServer();
+        InterceptorClient.getInstance().run();
 
         startServer(server);
+        InterceptorClient.getInstance().registerServer();
     }
 
     private NodeEndpoint parseNodeEndpoint(String rawNodeEndpoint) {

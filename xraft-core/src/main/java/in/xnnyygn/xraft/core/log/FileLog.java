@@ -12,6 +12,9 @@ import in.xnnyygn.xraft.core.node.NodeEndpoint;
 import in.xnnyygn.xraft.core.rpc.message.InstallSnapshotRpc;
 
 import javax.annotation.concurrent.NotThreadSafe;
+
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -56,7 +59,11 @@ public class FileLog extends AbstractLog {
             throw new LogException("failed to generate snapshot", e);
         }
         // UpdateSnapshotIndex event
-        InterceptorClient.getInstance().sendEvent(String.format("{\"type\":\"UpdateSnapshot\",\"node\":\"%s\",\"snapshot_index\":\"%d\"}", InterceptorClient.getInstance().getNodeId(), lastAppliedEntryMeta.getIndex()));
+        JSONObject json = new JSONObject();
+        json.put("type", "UpdateSnapshot");
+        json.put("node", InterceptorClient.getInstance().getNodeId());
+        json.put("snapshot_index", lastAppliedEntryMeta.getIndex());
+        InterceptorClient.getInstance().sendEvent(json.toString());
         return new FileSnapshot(logDir);
     }
 

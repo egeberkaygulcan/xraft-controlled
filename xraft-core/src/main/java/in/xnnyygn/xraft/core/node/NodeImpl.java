@@ -23,6 +23,8 @@ import in.xnnyygn.xraft.core.node.task.*;
 import in.xnnyygn.xraft.core.rpc.message.*;
 import in.xnnyygn.xraft.core.schedule.ElectionTimeout;
 import in.xnnyygn.xraft.core.schedule.LogReplicationTask;
+
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -320,7 +322,10 @@ public class NodeImpl implements Node {
 
     private void doProcessElectionTimeout() {
         // Timeout event
-        InterceptorClient.getInstance().sendEvent(String.format("{\"type\":\"Timeout\",\"node\":\"%s\"}", getSelfId()));
+        JSONObject json = new JSONObject();
+        json.put("type", "Timeout");
+        json.put("node", getSelfId());
+        InterceptorClient.getInstance().sendEvent(json.toString());
         if (role.getName() == RoleName.LEADER) {
             logger.warn("node {}, current role is leader, ignore election timeout", context.selfId());
             return;
@@ -340,7 +345,12 @@ public class NodeImpl implements Node {
                 logger.info("become leader, term {}", newTerm);
                 resetReplicatingStates();
                 // BecomeLeader event
-                InterceptorClient.getInstance().sendEvent(String.format("{\"type\":\"BecomeLeader\",\"node\":\"%s\",\"term\":\"%d\"}", getSelfId(), newTerm));
+                System.out.println("MODELFUZZ - " + getSelfId() + " - BecomeLeader event at term: " + newTerm);
+                json = new JSONObject();
+                json.put("type", "BecomeLeader");
+                json.put("node", getSelfId());
+                json.put("term", newTerm);
+                InterceptorClient.getInstance().sendEvent(json.toString());
                 changeToRole(new LeaderNodeRole(newTerm, scheduleLogReplicationTask()));
                 context.log().appendEntry(newTerm); // no-op log
             }
@@ -532,6 +542,7 @@ public class NodeImpl implements Node {
             case FOLLOWER:
                 FollowerNodeRole follower = (FollowerNodeRole) role;
                 NodeId votedFor = follower.getVotedFor();
+                System.out.println("MODELFUZZ - " + getSelfId() + " - votedFor: " + votedFor + " / term: " + role.getTerm());
                 // reply vote granted for
                 // 1. not voted and candidate's log is newer than self
                 // 2. voted for candidate
@@ -594,8 +605,14 @@ public class NodeImpl implements Node {
             // become leader
             logger.info("become leader, term {}", role.getTerm());
             resetReplicatingStates();
+            
             // BecomeLeader event
-            InterceptorClient.getInstance().sendEvent(String.format("{\"node\":\"%s\",\"term\":\"%d\"}", getSelfId(), role.getTerm()));
+            System.out.println("MODELFUZZ - " + getSelfId() + " - BecomeLeader event at term: " + role.getTerm());
+            JSONObject json = new JSONObject();
+            json.put("type", "BecomeLeader");
+            json.put("node", getSelfId());
+            json.put("term", role.getTerm());
+            InterceptorClient.getInstance().sendEvent(json.toString());
 
             changeToRole(new LeaderNodeRole(role.getTerm(), scheduleLogReplicationTask()));
             context.log().appendEntry(role.getTerm()); // no-op log

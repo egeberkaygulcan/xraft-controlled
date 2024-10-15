@@ -31,5 +31,7 @@ public class AppendEntriesResultMessage implements RaftMessage {
         return rpc;
     }
 
+    public String getSource() { return this.getSourceNodeId().toString(); }
+
     public String toString() { return "AppendEntriesResultMessage"; }
 }

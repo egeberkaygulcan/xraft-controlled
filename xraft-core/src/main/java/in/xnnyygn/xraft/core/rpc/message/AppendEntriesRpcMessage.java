@@ -10,4 +10,6 @@ public class AppendEntriesRpcMessage extends AbstractRpcMessage<AppendEntriesRpc
     }
 
     public String toString() { return "AppendEntriesRpcMessage"; }
+
+    public String getSource() { return this.getSourceNodeId().toString(); }
 }

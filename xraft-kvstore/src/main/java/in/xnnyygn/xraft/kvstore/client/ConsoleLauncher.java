@@ -44,6 +44,11 @@ public class ConsoleLauncher {
                 .desc("group config, required. format: <server-config> <server-config>. " +
                         "format of server config: <node-id>,<host>,<port-service>. e.g A,localhost,8001 B,localhost,8011")
                 .build());
+        options.addOption(Option.builder("ic")
+                .hasArgs()
+                .argName("initial-command")
+                .desc("'To run an initial command as the cli starts.")
+                .build());
         if (args.length == 0) {
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp("xraft-kvstore-client [OPTION]...", options);
@@ -52,15 +57,17 @@ public class ConsoleLauncher {
 
         CommandLineParser parser = new DefaultParser();
         Map<NodeId, Address> serverMap;
+        String initialCommand;
         try {
             CommandLine commandLine = parser.parse(options, args);
             serverMap = parseGroupConfig(commandLine.getOptionValues("gc"));
+            initialCommand = commandLine.getOptionValue("ic");
         } catch (ParseException | IllegalArgumentException e) {
             System.err.println(e.getMessage());
             return;
         }
-
-        Console console = new Console(serverMap);
+        initialCommand = initialCommand == null ? "" : initialCommand;
+        Console console = new Console(serverMap, initialCommand);
         console.start();
     }
 

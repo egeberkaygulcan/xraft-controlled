@@ -8,13 +8,19 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpRequest.BodyPublishers;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import in.xnnyygn.xraft.core.log.entry.Entry;
+import in.xnnyygn.xraft.core.node.NodeEndpoint;
 import in.xnnyygn.xraft.core.node.NodeImpl;
 import in.xnnyygn.xraft.core.rpc.message.AppendEntriesResult;
 import in.xnnyygn.xraft.core.rpc.message.AppendEntriesResultMessage;
@@ -34,8 +40,9 @@ public class InterceptorClient {
     private Javalin app;
     private int interceptorPort;
     private int schedulerPort;
-    private CopyOnWriteArrayList<RaftMessage> messageQueue;
+    private HashMap<String, CopyOnWriteArrayList<RaftMessage>> messageQueues;
     private NodeImpl node;
+
 
     private HttpClient client;
 
@@ -52,21 +59,31 @@ public class InterceptorClient {
         return instance;
     }
 
-    public void init(int interceptorPort, int schedulerPort, NodeImpl node) {
+    public void init(int interceptorPort, int schedulerPort, NodeImpl node, Set<NodeEndpoint> nodeEndpoints) {
         this.interceptorPort = interceptorPort;
         this.schedulerPort = schedulerPort;
         this.node = node;
-        this.messageQueue = new CopyOnWriteArrayList<>();
+        this.messageQueues = new HashMap<String, CopyOnWriteArrayList<RaftMessage>>();
+
+        for(NodeEndpoint endpoint : nodeEndpoints) {
+            messageQueues.put(endpoint.getId().toString(), new CopyOnWriteArrayList<RaftMessage>());
+        } 
+
         this.client = HttpClient.newHttpClient();
-        this.app = Javalin.create()
-                .post("/schedule", ctx -> {
-                    try {
-                        RaftMessage message = this.messageQueue.getFirst();
-                        this.node.scheduleMessage(message);
-                    } catch (NoSuchElementException e) {
-                        System.out.println("Message queue empty.");
-                    }
-                });
+        this.app = Javalin.create();
+        
+        for (String key : messageQueues.keySet()) {
+            this.app.post("/schedule_" + key, ctx -> {
+                try {
+                    // System.out.println("Scheduling message from " + key);
+                    RaftMessage message = this.messageQueues.get(key).getFirst();
+                    this.node.scheduleMessage(message);
+                } catch (NoSuchElementException e) {
+                    System.out.println("Message queue empty.");
+                } finally {}
+            });
+            
+        }
     }
 
     public void run() {
@@ -78,8 +95,8 @@ public class InterceptorClient {
             System.out.println("Null message.");
             return;
         } else {
-            this.messageQueue.add(message);
-            System.out.println("Intercepted " + message.toString());
+            this.messageQueues.get(message.getSourceNodeId().toString()).add(message);
+            // System.out.println("Intercepted " + message.toString());
             // System.out.println(getMessageString(message));
         }
         
@@ -87,13 +104,10 @@ public class InterceptorClient {
         // this.node.scheduleMessage(message);
 
         String json = getMessageString(message);
-        if (json.isEmpty()) {
-            this.messageQueue.removeLast();
-            return;
-        }
+        // System.out.println(json);
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("http://127.0.0.1:"+this.schedulerPort+"/message"))
+                .uri(URI.create("http://localhost:"+this.schedulerPort+"/message"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json))
                 .build();
@@ -106,9 +120,10 @@ public class InterceptorClient {
     }
 
     public void sendEvent(String event) {
+        System.out.println("Sending event: " + event);
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("http://127.0.0.1:"+this.schedulerPort+"/event"))
+                .uri(URI.create("http://localhost:"+this.schedulerPort+"/event"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(event))
                 .build();
@@ -120,10 +135,15 @@ public class InterceptorClient {
     }
 
     public void registerServer() {
-        String reg = String.format("{\"id\":\"\",\"addr\":\"\"}", getNodeId(), "127.0.0.1:"+interceptorPort);
+        JSONObject json = new JSONObject();
+        json.put("id", getNodeId());
+        json.put("addr", "localhost:"+interceptorPort);
+        String reg = json.toString();
+
+        System.out.println("Registering server: " + reg);
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("http://127.0.0.1:"+this.schedulerPort+"/replica"))
+                .uri(URI.create("http://localhost:"+this.schedulerPort+"/replica"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(reg))
                 .build();
@@ -138,78 +158,82 @@ public class InterceptorClient {
         if (message instanceof RequestVoteRpcMessage) {
             RequestVoteRpcMessage msg = (RequestVoteRpcMessage) message;
             RequestVoteRpc m = msg.get();
-            String msgStr = "{";
-            msgStr += "\"type\":\"request_vote_request\",";
-            msgStr += "\"from\":\"%s\",";
-            msgStr += "\"to\":\"%s\",";
-            msgStr += "\"term\":\"%d\",";
-            msgStr += "\"last_log_term\":\"%d\",";
-            msgStr += "\"last_log_idx\":\"%d\"";
-            msgStr += "}";
 
-            return String.format(msgStr, msg.getSourceNodeId().toString(), this.getNodeId(), m.getTerm(), m.getLastLogTerm(), m.getLastLogIndex());
+            JSONObject json = new JSONObject();
+            json.put("type", "request_vote_request");
+            json.put("from", msg.getSourceNodeId().toString());
+            json.put("to", this.getNodeId());
+
+            JSONObject dataJson = new JSONObject();
+            dataJson.put("term", m.getTerm());
+            dataJson.put("last_log_term", m.getLastLogTerm());
+            dataJson.put("last_log_idx", m.getLastLogIndex());
+
+            json.put("data", dataJson.toString());
+            
+            return json.toString();
 
         } else if (message instanceof RequestVoteResult) {
             RequestVoteResult msg = (RequestVoteResult) message;
-            String msgStr = "{";
-            msgStr += "\"type\":\"request_vote_response\",";
-            msgStr += "\"from\":\"%s\",";
-            msgStr += "\"to\":\"%s\",";
-            msgStr += "\"term\":\"%d\",";
-            msgStr += "\"vote_granted\":%b";
-            msgStr += "}";
+            int granted = msg.isVoteGranted() ? 1 : 0;
 
-            return String.format(msgStr, msg.getSourceId(), this.getNodeId(), msg.getTerm(), msg.isVoteGranted());
+            JSONObject json = new JSONObject();
+            json.put("type", "request_vote_response");
+            json.put("from", msg.getSourceNodeId().toString());
+            json.put("to", this.getNodeId());
+
+            JSONObject dataJson = new JSONObject();
+            dataJson.put("term", msg.getTerm());
+            dataJson.put("vote_granted", granted);
+
+            json.put("data", dataJson.toString());
+            
+            return json.toString();
         } else if (message instanceof AppendEntriesRpcMessage) {
             AppendEntriesRpcMessage msg = (AppendEntriesRpcMessage) message;
             AppendEntriesRpc m = msg.get();
-            String msgStr = "{";
-            msgStr += "\"type\":\"request_vote_response\",";
-            msgStr += "\"from\":\"%s\",";
-            msgStr += "\"to\":\"%s\",";
-            msgStr += "\"term\":\"%d\",";
-            msgStr += "\"prev_log_term\":\"%d\",";
-            msgStr += "\"prev_log_index\":\"\",";
-            msgStr += "\"leader_commit\":\"%d\",";
 
-            String entries = "\"entries\":[";
-            int i = 0;
+            JSONObject json = new JSONObject();
+            json.put("type", "append_entries_request");
+            json.put("from", msg.getSourceNodeId().toString());
+            json.put("to", this.getNodeId());
+
+            JSONObject dataJson = new JSONObject();
+            dataJson.put("term", m.getTerm());
+            dataJson.put("prev_log_term", m.getPrevLogTerm());
+            dataJson.put("prev_log_index", m.getPrevLogIndex());
+            dataJson.put("leader_commit", m.getLeaderCommit());
+
+            JSONArray entries = new JSONArray();
             for (Entry e : m.getEntries()) {
-                if (i != 0)
-                    entries += ",";
-                String entry = String.format("{\"data\":\"%s\",\"term\":\"%d\"}", e.toString(), e.getTerm());
-                entries += entry;
-                i++;
+                JSONObject entry = new JSONObject();
+                entry.put("data", Integer.toString(e.hashCode()));
+                entry.put("term", e.getTerm());
+                entries.put(entry);
             }
-            entries += "]";
-            msgStr += entries;
-            
+            dataJson.put("entries", entries);
 
-            return String.format(msgStr, 
-                            msg.getSourceNodeId().toString(), 
-                            this.getNodeId(), 
-                            m.getTerm(), 
-                            m.getPrevLogTerm(), 
-                            m.getPrevLogIndex(),
-                            m.getLeaderCommit());
+            json.put("data", dataJson.toString());
+            
+            return json.toString();
         } else if(message instanceof AppendEntriesResultMessage) {
             AppendEntriesResultMessage msg = (AppendEntriesResultMessage) message;
             AppendEntriesResult m = msg.get();
-            String msgStr = "{";
-            msgStr += "\"type\":\"append_entries_response\",";
-            msgStr += "\"from\":\"%s\",";
-            msgStr += "\"to\":\"%s\",";
-            msgStr += "\"term\":\"%d\",";
-            msgStr += "\"current_idx\":\"%d\",";
-            msgStr += "\"success\":%b";
-            msgStr += "}";
+            int success = m.isSuccess() ? 1 : 0;
 
-            return String.format(msgStr, 
-                            msg.getSourceNodeId().toString(), 
-                            this.getNodeId(), 
-                            m.getTerm(), 
-                            msg.getRpc().getLastEntryIndex(),
-                            m.isSuccess());
+            JSONObject json = new JSONObject();
+            json.put("type", "append_entries_response");
+            json.put("from", msg.getSourceNodeId().toString());
+            json.put("to", this.getNodeId());
+
+            JSONObject dataJson = new JSONObject();
+            dataJson.put("term", m.getTerm());
+            dataJson.put("current_idx", msg.getRpc().getLastEntryIndex());
+            dataJson.put("success",success);
+
+            json.put("data", dataJson.toString());
+            
+            return json.toString();
         } else {
             return "";
         }
